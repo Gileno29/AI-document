@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,18 +11,26 @@ import (
 	"path/filepath"
 	"strings"
 
-	"docqa/internal/llm"
-	"docqa/internal/python"
 	"docqa/internal/text"
 )
 
+type PythonClient interface {
+	Ingest(ctx context.Context, docID string, chunks []string) error
+	Retrieve(ctx context.Context, docID, query string) ([]string, error)
+}
+
+type LLMClient interface {
+	Complete(ctx context.Context, prompt string) (string, error)
+}
+
+// implemented with interfaces to make easy do the tests
 type Handler struct {
-	python    *python.Client
-	llm       *llm.Client
+	python    PythonClient //*python.Client
+	llm       LLMClient    //*llm.Client
 	uploadDir string
 }
 
-func New(p *python.Client, l *llm.Client, uploadDir string) *Handler {
+func New(p PythonClient, l LLMClient, uploadDir string) *Handler {
 	return &Handler{python: p, llm: l, uploadDir: uploadDir}
 }
 
