@@ -112,7 +112,7 @@ func (h *Handler) Ask(w http.ResponseWriter, r *http.Request) {
 	answer, err := h.llm.Complete(r.Context(), prompt)
 	if err != nil {
 		slog.Error("llm complete", "err", err)
-		writeError(w, http.StatusBadGateway, "LLM error")
+		writeError(w, http.StatusBadGateway, err.Error())
 		return
 	}
 
