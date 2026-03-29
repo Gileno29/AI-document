@@ -32,7 +32,7 @@ func NewClient() *Client {
 
 	ollamaURL := os.Getenv("OLLAMA_URL")
 	if ollamaURL == "" {
-		ollamaURL = "http://host.docker.internal:11434"
+		ollamaURL = "http://docqa-ollama:11434"
 	}
 
 	ollamaModel := os.Getenv("OLLAMA_MODEL")
