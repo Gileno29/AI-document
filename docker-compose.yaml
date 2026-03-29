@@ -46,7 +46,7 @@ services:
       - "8030:8000"
     environment:
       - CHROMA_HOST=chroma
-      - CHROMA_PORT=8001
+      - CHROMA_PORT=8000
       - MODEL_NAME=all-MiniLM-L6-v2
       - TOP_K=5
     volumes:
