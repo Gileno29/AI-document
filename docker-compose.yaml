@@ -15,7 +15,7 @@ services:
       - PORT=8080
       - EMBED_SERVICE_URL=http://embed:8000
       - LLM_PROVIDER=${LLM_PROVIDER:-ollama}    # ollama | openai | anthropic
-      - OLLAMA_URL=${OLLAMA_URL:-http://host.docker.internal:11434}
+      - OLLAMA_URL=${OLLAMA_URL:-http://ollama:11434}
       - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.2}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
@@ -82,10 +82,50 @@ services:
       timeout: 5s
       retries: 5
 
+# Container to ollama
+
+  ollama:
+      build:
+        context: ./ollama
+        dockerfile: Dockerfile
+      container_name: docqa-ollama
+      ports:
+        - "11435:11434"
+      volumes:
+        - ollama_data:/root/.ollama
+      restart: unless-stopped
+      healthcheck:
+        test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+        interval: 10s
+        timeout: 5s
+        retries: 10
+        start_period: 10s
+  ollama-pull:
+    build:
+      context: ./ollama
+      dockerfile: Dockerfile
+    container_name: docqa-ollama-pull
+    entrypoint: >
+      sh -c "
+        echo 'Waiting for Ollama...';
+        until curl -sf http://ollama:11434/api/tags > /dev/null; do sleep 2; done;
+        echo 'Pulling llama3.2...';
+        ollama pull ${OLLAMA_MODEL:-llama3.2};
+        echo 'Model ready.'
+      "
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: "no"
+
 volumes:
   uploads:
     driver: local
   chroma_data:
     driver: local
   model_cache:
+    driver: local
+  ollama_data:
     driver: local
