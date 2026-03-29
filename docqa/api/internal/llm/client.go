@@ -60,7 +60,7 @@ func (c *Client) Complete(ctx context.Context, prompt string) (string, error) {
 	}
 }
 
-// ── Ollama (local, free) ─────────────────────────────────────────────────────
+// ollama
 
 func (c *Client) ollama(ctx context.Context, prompt string) (string, error) {
 	payload := map[string]any{
@@ -94,7 +94,7 @@ func (c *Client) ollama(ctx context.Context, prompt string) (string, error) {
 	return result.Response, nil
 }
 
-// ── OpenAI ──────────────────────────────────────────────────────────────────
+// OpenAI
 
 func (c *Client) openai(ctx context.Context, prompt string) (string, error) {
 	payload := map[string]any{
@@ -135,7 +135,7 @@ func (c *Client) openai(ctx context.Context, prompt string) (string, error) {
 	return result.Choices[0].Message.Content, nil
 }
 
-// ── Anthropic ────────────────────────────────────────────────────────────────
+//Anthropic
 
 func (c *Client) anthropic(ctx context.Context, prompt string) (string, error) {
 	payload := map[string]any{

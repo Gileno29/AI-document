@@ -9,12 +9,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
-
 	"docqa/internal/handlers"
 	"docqa/internal/llm"
 	"docqa/internal/python"
+	"docqa/internal/router"
 )
 
 func main() {
@@ -35,16 +33,7 @@ func main() {
 
 	h := handlers.New(pythonClient, llmClient, uploadDir)
 
-	r := chi.NewRouter()
-	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
-	r.Use(middleware.Recoverer)
-	r.Use(requestLogger)
-
-	r.Get("/health", h.Health)
-	r.Post("/upload", h.Upload)
-	r.Post("/ask", h.Ask)
-
+	r := router.New(h)
 	srv := &http.Server{
 		Addr:         ":" + port,
 		Handler:      r,
@@ -61,6 +50,7 @@ func main() {
 		}
 	}()
 
+	// Gracefull shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
@@ -76,19 +66,4 @@ func getEnv(key, fallback string) string {
 		return v
 	}
 	return fallback
-}
-
-func requestLogger(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
-		ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
-		next.ServeHTTP(ww, r)
-		slog.Info("request",
-			"method", r.Method,
-			"path", r.URL.Path,
-			"status", ww.Status(),
-			"latency_ms", time.Since(start).Milliseconds(),
-			"request_id", middleware.GetReqID(r.Context()),
-		)
-	})
 }
