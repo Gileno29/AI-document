@@ -20,7 +20,7 @@ func TestNewClient_OllamaDefaults(t *testing.T) {
 	defer os.Unsetenv("LLM_PROVIDER")
 
 	c := NewClient()
-	if c.ollamaURL != "http://host.docker.internal:11434" {
+	if c.ollamaURL != "http://docqa-ollama:11434" {
 		t.Errorf("unexpected ollamaURL: %q", c.ollamaURL)
 	}
 	if c.ollamaModel != "llama3.2" {

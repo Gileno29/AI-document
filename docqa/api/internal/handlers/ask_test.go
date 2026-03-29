@@ -7,12 +7,11 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"path/filepath"
 	"testing"
 )
 
-// ── fakes
+// ── fakes ─────────────────────────────────────────────────────────────────────
 
 type fakePython struct {
 	ingestErr   error
@@ -36,10 +35,10 @@ func (f *fakeLLM) Complete(_ context.Context, _ string) (string, error) {
 	return f.answer, f.err
 }
 
-// ── health
+// ── health ────────────────────────────────────────────────────────────────────
 
 func TestHealth_Returns200(t *testing.T) {
-	h := newTestHandler(t, &fakePython{}, &fakeLLM{answer: "ok"})
+	h := New(&fakePython{}, &fakeLLM{answer: "ok"}, t.TempDir())
 
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	rec := httptest.NewRecorder()
@@ -50,10 +49,10 @@ func TestHealth_Returns200(t *testing.T) {
 	}
 }
 
-// ── upload
+// ── upload ────────────────────────────────────────────────────────────────────
 
 func TestUpload_ValidTxt(t *testing.T) {
-	h := newTestHandler(t, &fakePython{}, &fakeLLM{})
+	h := New(&fakePython{}, &fakeLLM{}, t.TempDir())
 
 	body, ct := multipartFile(t, "test.txt", []byte("Hello world. This is a test document for chunking purposes."))
 	req := httptest.NewRequest(http.MethodPost, "/upload", body)
@@ -74,7 +73,7 @@ func TestUpload_ValidTxt(t *testing.T) {
 }
 
 func TestUpload_InvalidExtension(t *testing.T) {
-	h := newTestHandler(t, &fakePython{}, &fakeLLM{})
+	h := New(&fakePython{}, &fakeLLM{}, t.TempDir())
 
 	body, ct := multipartFile(t, "test.csv", []byte("a,b,c"))
 	req := httptest.NewRequest(http.MethodPost, "/upload", body)
@@ -89,7 +88,7 @@ func TestUpload_InvalidExtension(t *testing.T) {
 }
 
 func TestUpload_MissingFile(t *testing.T) {
-	h := newTestHandler(t, &fakePython{}, &fakeLLM{})
+	h := New(&fakePython{}, &fakeLLM{}, t.TempDir())
 
 	req := httptest.NewRequest(http.MethodPost, "/upload", bytes.NewBufferString(""))
 	req.Header.Set("Content-Type", "multipart/form-data; boundary=xxx")
@@ -102,12 +101,12 @@ func TestUpload_MissingFile(t *testing.T) {
 	}
 }
 
-// ── ask
+// ── ask ───────────────────────────────────────────────────────────────────────
 
 func TestAsk_ValidRequest(t *testing.T) {
 	python := &fakePython{chunks: []string{"chunk one", "chunk two"}}
 	llm := &fakeLLM{answer: "This is the answer."}
-	h := newTestHandler(t, python, llm)
+	h := New(python, llm, t.TempDir())
 
 	body, _ := json.Marshal(map[string]string{
 		"doc_id":   "test-doc",
@@ -130,8 +129,8 @@ func TestAsk_ValidRequest(t *testing.T) {
 	}
 }
 
-func TestAsk_MissingFields(t *testing.T) {
-	h := newTestHandler(t, &fakePython{}, &fakeLLM{})
+func TestAsk_MissingQuestion(t *testing.T) {
+	h := New(&fakePython{}, &fakeLLM{}, t.TempDir())
 
 	body, _ := json.Marshal(map[string]string{"doc_id": "test-doc"})
 	req := httptest.NewRequest(http.MethodPost, "/ask", bytes.NewReader(body))
@@ -146,7 +145,7 @@ func TestAsk_MissingFields(t *testing.T) {
 }
 
 func TestAsk_EmptyBody(t *testing.T) {
-	h := newTestHandler(t, &fakePython{}, &fakeLLM{})
+	h := New(&fakePython{}, &fakeLLM{}, t.TempDir())
 
 	req := httptest.NewRequest(http.MethodPost, "/ask", bytes.NewBufferString("{}"))
 	req.Header.Set("Content-Type", "application/json")
@@ -159,32 +158,7 @@ func TestAsk_EmptyBody(t *testing.T) {
 	}
 }
 
-// ── helpers
-
-// pythonClient and llmClient interfaces for injection
-type pythonClient interface {
-	Ingest(ctx context.Context, docID string, chunks []string) error
-	Retrieve(ctx context.Context, docID, query string) ([]string, error)
-}
-
-type llmClient interface {
-	Complete(ctx context.Context, prompt string) (string, error)
-}
-
-func newTestHandler(t *testing.T, p pythonClient, l llmClient) *Handler {
-	t.Helper()
-	dir := t.TempDir()
-	return &Handler{
-		python: p.(interface {
-			Ingest(context.Context, string, []string) error
-			Retrieve(context.Context, string, string) ([]string, error)
-		}),
-		llm: l.(interface {
-			Complete(context.Context, string) (string, error)
-		}),
-		uploadDir: dir,
-	}
-}
+// ── helpers ───────────────────────────────────────────────────────────────────
 
 func multipartFile(t *testing.T, filename string, content []byte) (*bytes.Buffer, string) {
 	t.Helper()
@@ -195,11 +169,6 @@ func multipartFile(t *testing.T, filename string, content []byte) (*bytes.Buffer
 		t.Fatal(err)
 	}
 	fw.Write(content)
-
-	// write to temp file so Extract can read it
-	tmp := filepath.Join(os.TempDir(), filename)
-	os.WriteFile(tmp, content, 0644)
-
 	w.Close()
 	return &buf, w.FormDataContentType()
 }
