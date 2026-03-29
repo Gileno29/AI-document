@@ -6,7 +6,7 @@ test:go:
   stage: test
   image: golang:1.26-alpine
   before_script:
-    - cd api
+    - cd docqa/api
     - go mod download
   script:
     - go vet ./...
@@ -23,7 +23,7 @@ test:python:
   stage: test
   image: python:3.11-slim
   before_script:
-    - cd embed
+    - cd docqa/embed
     - pip install --no-cache-dir -r requirements.txt
   script:
     - python -m pytest tests/ -v
